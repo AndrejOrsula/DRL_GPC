@@ -1,6 +1,7 @@
 from collections import deque
+
 from drl_grasping.envs.tasks.grasp import Grasp
-from drl_grasping.perception import CameraSubscriber, OctreeCreator
+from drl_grasping.perception import CameraSubscriber
 from drl_grasping.utils.conversions import orientation_quat_to_6d
 from gym_ignition.utils.typing import Observation
 from gym_ignition.utils.typing import ObservationSpace
@@ -10,11 +11,11 @@ import gym
 import numpy as np
 
 
-class GraspOctree(Grasp, abc.ABC):
+class GraspRgbdImage(Grasp, abc.ABC):
 
     # Overwrite parameters for ManipulationGazeboEnvRandomizer
     _camera_enable: bool = True
-    _camera_type: str = 'auto'
+    _camera_type: str = 'rgbd_camera'
     _camera_width: int = 128
     _camera_height: int = 128
     _camera_update_rate: int = 10
@@ -23,24 +24,12 @@ class GraspOctree(Grasp, abc.ABC):
     _camera_position: Tuple[float, float, float] = (0.95, -0.55, 0.25)
     _camera_quat_xyzw: Tuple[float, float,
                              float, float] = (-0.0402991, -0.0166924, 0.9230002, 0.3823192)
-    _camera_ros2_bridge_points: bool = True
+    _camera_ros2_bridge_color: bool = True
+    _camera_ros2_bridge_depth: bool = True
 
     _workspace_volume: Tuple[float, float, float] = (0.24, 0.24, 0.2)
     _workspace_centre: Tuple[float, float, float] = (
         0.5, 0.0, _workspace_volume[2]/2)
-
-    # Size of octree (boundary size)
-    _octree_size: float = 0.24
-    # A small offset to include ground in the observations
-    _octree_ground_offset: float = 0.01
-    _octree_min_bound: Tuple[float, float, float] = (_workspace_centre[0]-_octree_size/2,
-                                                     _workspace_centre[1] -
-                                                     _octree_size/2,
-                                                     0.0 - _octree_ground_offset)
-    _octree_max_bound: Tuple[float, float, float] = (_workspace_centre[0]+_octree_size/2,
-                                                     _workspace_centre[1] +
-                                                     _octree_size/2,
-                                                     (_octree_size) - _octree_ground_offset)
 
     _object_spawn_centre: Tuple[float, float, float] = \
         (_workspace_centre[0],
@@ -82,11 +71,8 @@ class GraspOctree(Grasp, abc.ABC):
                  curriculum_skip_grasp_stage: bool,
                  curriculum_restart_exploration_at_start: bool,
                  max_episode_length: int,
-                 octree_depth: int,
-                 octree_full_depth: int,
-                 octree_include_color: bool,
-                 octree_n_stacked: int,
-                 octree_max_size: int,
+                 depth_max_distance: float,
+                 image_n_stacked: int,
                  proprieceptive_observations: bool,
                  verbose: bool,
                  preload_replay_buffer: bool = False,
@@ -127,46 +113,33 @@ class GraspOctree(Grasp, abc.ABC):
                        preload_replay_buffer=preload_replay_buffer,
                        **kwargs)
 
-        if octree_include_color:
-            self._camera_type = 'rgbd_camera'
-        else:
-            self._camera_type = 'depth_camera'
-
-        # Perception (RGB-D camera - point cloud)
-        self.camera_sub = CameraSubscriber(topic=f'/{self._camera_type}/points',
-                                           is_point_cloud=True,
-                                           node_name=f'drl_grasping_point_cloud_sub_{self.id}')
-
-        self.octree_creator = OctreeCreator(min_bound=self._octree_min_bound,
-                                            max_bound=self._octree_max_bound,
-                                            depth=octree_depth,
-                                            full_depth=octree_full_depth,
-                                            include_color=octree_include_color,
-                                            use_sim_time=True,
-                                            debug_draw=False,
-                                            debug_write_octree=False,
-                                            robot_frame_id='panda_link0' if 'panda' == robot_model else 'base_link',
-                                            node_name=f'drl_grasping_octree_creator_{self.id}')
+        # Perception (RGB-D camera - rgb+depth)
+        self.camera_sub = CameraSubscriber(topic=f'/{self._camera_type}/image',
+                                           is_point_cloud=False,
+                                           node_name=f'drl_grasping_rgb_camera_sub_{self.id}')
+        self.depth_camera_sub = CameraSubscriber(topic=f'/{self._camera_type}/depth_image',
+                                                 is_point_cloud=False,
+                                                 node_name=f'drl_grasping_depth_camera_sub_{self.id}')
 
         # Additional parameters
-        self._octree_n_stacked = octree_n_stacked
-        self._octree_max_size = octree_max_size
+        self._depth_max_distance = depth_max_distance
+        self._image_n_stacked = image_n_stacked
         self._proprieceptive_observations = proprieceptive_observations
 
         # List of all octrees
-        self.__stacked_octrees = deque([], maxlen=self._octree_n_stacked)
+        self.__stacked_images = deque([], maxlen=self._image_n_stacked)
 
     def create_observation_space(self) -> ObservationSpace:
 
-        # 0:n - octree
-        # Note: octree is currently padded with zeros to have constant size
-        # TODO: Customize replay buffer to support variable sized observations
-        # If enabled, proprieceptive observations will be embedded inside octree in a hacky way
-        # (replace with Dict once https://github.com/DLR-RM/stable-baselines3/pull/243 is merged)
+        # float_size*channels*height*width - rgb (uint8) + depth (float32) image, stored as bytes
+        size = 3*self._camera_height*self._camera_width + \
+            4*self._camera_height*self._camera_width
+        if self._proprieceptive_observations:
+            size += 4*11
+
         return gym.spaces.Box(low=0,
                               high=255,
-                              shape=(self._octree_n_stacked,
-                                     self._octree_max_size),
+                              shape=(self._image_n_stacked, size),
                               dtype=np.uint8)
 
     def create_proprioceptive_observation_space(self) -> ObservationSpace:
@@ -189,39 +162,34 @@ class GraspOctree(Grasp, abc.ABC):
 
     def get_observation(self) -> Observation:
 
-        # Get the latest point cloud
-        point_cloud = self.camera_sub.get_observation()
+        # Get the latest color image
+        color_image = self.camera_sub.get_observation()
+        # Convert to np array
+        color_image = np.array(color_image.data,
+                               dtype=np.uint8).astype(object)
 
-        # Contrust octree from this point cloud
-        octree = self.octree_creator(point_cloud).numpy()
+        # Get the latest depth image
+        depth_image = self.depth_camera_sub.get_observation()
+        # Convert to np array
+        depth_image = np.array(depth_image.data, dtype=np.float32)
+        # Normalize
+        depth_image /= self._depth_max_distance
+        depth_image = depth_image.astype(object)
 
-        # Pad octree with zeros to have a consistent length
-        # TODO: Customize replay buffer to support variable sized observations
-        octree_size = octree.shape[0]
-        if octree_size > self._octree_max_size:
-            print(f"ERROR: Octree is larger than the maximum "
-                  f"allowed size (exceeded with {octree_size})")
-        octree = np.pad(octree,
-                        (0, self._octree_max_size - octree_size),
-                        'constant',
-                        constant_values=0)
-
-        # Write the original length into the padded octree for reference
-        octree[-4:] = np.ndarray(buffer=np.array([octree_size],
-                                                 dtype='uint32').tobytes(),
-                                 shape=(4,),
-                                 dtype='uint8')
-        # To get it back:
-        # octree_size = np.frombuffer(buffer=octree[-4:],
-        #                             dtype='uint32',
-        #                             count=1)
+        rgbd_image = np.concatenate((color_image, depth_image))
 
         if self._proprieceptive_observations:
+            # Pad octree with zeros to have a place for proprioceptive observations
+            rgbd_image = np.pad(rgbd_image,
+                                (0, 44),
+                                'constant',
+                                constant_values=0)
+
             # Add number of auxiliary observations to octree structure
-            octree[-8:-4] = np.ndarray(buffer=np.array([10],
-                                                       dtype='uint32').tobytes(),
-                                       shape=(4,),
-                                       dtype='uint8')
+            rgbd_image[-4:] = np.ndarray(buffer=np.array([10],
+                                                         dtype='uint32').tobytes(),
+                                         shape=(4,),
+                                         dtype='uint8')
 
             # Gather proprioceptive observations
             ee_position = self.get_ee_position()
@@ -230,18 +198,18 @@ class GraspOctree(Grasp, abc.ABC):
             aux_obs = (self._gripper_state,) + ee_position + \
                 ee_orientation[0] + ee_orientation[1]
 
-            # Add auxiliary observations into the octree structure
-            octree[-48:-8] = np.ndarray(buffer=np.array(aux_obs, dtype='float32').tobytes(),
-                                        shape=(40,),
-                                        dtype='uint8')
+            # Add auxiliary observations into the image structure
+            rgbd_image[-44:-4] = np.ndarray(buffer=np.array(aux_obs, dtype='float32').tobytes(),
+                                            shape=(40,),
+                                            dtype='uint8')
 
-        self.__stacked_octrees.append(octree)
+        self.__stacked_images.append(rgbd_image)
         # For the first buffer after reset, fill with identical observations until deque is full
-        while not self._octree_n_stacked == len(self.__stacked_octrees):
-            self.__stacked_octrees.append(octree)
+        while not self._image_n_stacked == len(self.__stacked_images):
+            self.__stacked_images.append(rgbd_image)
 
         # Create the observation
-        observation = Observation(np.array(self.__stacked_octrees))
+        observation = Observation(np.array(self.__stacked_images))
 
         if self._verbose:
             print(f"\nobservation: {observation}")
@@ -251,5 +219,5 @@ class GraspOctree(Grasp, abc.ABC):
 
     def reset_task(self):
 
-        self.__stacked_octrees.clear()
+        self.__stacked_images.clear()
         Grasp.reset_task(self)

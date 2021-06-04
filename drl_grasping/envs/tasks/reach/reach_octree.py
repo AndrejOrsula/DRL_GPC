@@ -15,8 +15,8 @@ class ReachOctree(Reach, abc.ABC):
     # Overwrite parameters for ManipulationGazeboEnvRandomizer
     _camera_enable: bool = True
     _camera_type: str = 'auto'
-    _camera_width: int = 256
-    _camera_height: int = 256
+    _camera_width: int = 128
+    _camera_height: int = 128
     _camera_update_rate: int = 10
     _camera_horizontal_fov: float = 0.9
     _camera_vertical_fov: float = 0.9

@@ -124,3 +124,14 @@ class LinearBnRelu(torch.nn.Module):
         out = self.bn(out)
         out = self.relu(out)
         return out
+
+class ImageConvRelu(torch.nn.Module):
+    def __init__(self, channel_in, channel_out, kernel_size=3, stride=1, padding=1):
+        super(ImageConvRelu, self).__init__()
+        self.conv = torch.nn.Conv2d(channel_in, channel_out, kernel_size, stride, padding)
+        self.relu = torch.nn.ReLU(inplace=True)
+
+    def forward(self, data_in):
+        out = self.conv(data_in)
+        out = self.relu(out)
+        return out

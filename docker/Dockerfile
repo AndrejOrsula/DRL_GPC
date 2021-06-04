@@ -180,8 +180,8 @@ RUN pip3 install \
 RUN pip3 install \
         sb3-contrib
 
-ARG DRL_GRASPING_GIT_BRANCH=master
-ARG DRL_GRASPING_DOCKER_VERSION=0.12.0
+ARG DRL_GRASPING_GIT_BRANCH=test_compare_image_cnn
+ARG DRL_GRASPING_DOCKER_VERSION=0.12.1
 RUN apt-get update && mkdir -p ${DRL_GRASPING_REPOS_DIR}/drl_grasping/src && \
     cd ${DRL_GRASPING_REPOS_DIR}/drl_grasping/src && \
     git clone https://github.com/AndrejOrsula/drl_grasping.git -b ${DRL_GRASPING_GIT_BRANCH} && \

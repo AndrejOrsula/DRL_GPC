@@ -1,2 +1,2 @@
 from . import tqc
-from .policies import OctreeCnnPolicy
+from .policies import OctreeCnnPolicy, ImageCnnPolicy

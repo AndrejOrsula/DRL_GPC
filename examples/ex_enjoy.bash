@@ -12,7 +12,9 @@ SEED="77"
 ## Grasp
 # ENV_ID="Grasp-Gazebo-v0"
 # ENV_ID="Grasp-Octree-Gazebo-v0"
-ENV_ID="Grasp-OctreeWithColor-Gazebo-v0"
+# ENV_ID="Grasp-OctreeWithColor-Gazebo-v0"
+ENV_ID="Grasp-ColorImage-Gazebo-v0"
+# ENV_ID="Grasp-RgbdImage-Gazebo-v0"
 
 ## Robot model
 ROBOT_MODEL="panda"

@@ -243,3 +243,97 @@ Grasp-OctreeWithColor-Gazebo-v0:
   noise_std: 0.025
   use_sde: False
   optimize_memory_usage: True
+
+Grasp-ColorImage-Gazebo-v0:
+  policy: "ImageCnnPolicy"
+  policy_kwargs:
+    features_extractor_kwargs:
+      channels_in: 3
+      width: 128
+      height: 128
+      max_pool_kernel: 4
+      channel_multiplier: 48
+      full_depth_conv1d: True
+      full_depth_channels: 18
+      features_dim: 160
+      aux_obs_dim: 10
+    n_quantiles: 25
+    n_critics: 2
+    net_arch: [512, 512]
+    separate_networks_for_stacks: True
+    share_features_extractor: True
+  env_wrapper:
+    - drl_grasping.envs.randomizers.ManipulationGazeboEnvRandomizer:
+        robot_random_joint_positions: True
+        robot_random_joint_positions_std: 0.1
+        camera_pose_rollouts_num: 0
+        camera_noise_mean: 0
+        camera_noise_stddev: 0.001
+        ground_model_rollouts_num: 1
+        object_random_pose: True
+        object_random_use_mesh_models: True
+        object_models_rollouts_num: 1
+        object_random_model_count: 1
+  n_timesteps: 500000
+  buffer_size: 40000
+  learning_starts: 0
+  batch_size: 32
+  learning_rate: lin_0.00015
+  gamma: 0.999
+  tau: 0.00005
+  ent_coef: "auto_0.1_0.05"
+  target_entropy: "auto"
+  top_quantiles_to_drop_per_net: 3
+  train_freq: [1, "episode"]
+  gradient_steps: 100
+  noise_type: "normal"
+  noise_std: 0.025
+  use_sde: False
+  optimize_memory_usage: True
+
+Grasp-RgbdImage-Gazebo-v0:
+  policy: "ImageCnnPolicy"
+  policy_kwargs:
+    features_extractor_kwargs:
+      channels_in: 4
+      width: 128
+      height: 128
+      max_pool_kernel: 4
+      channel_multiplier: 48
+      full_depth_conv1d: True
+      full_depth_channels: 18
+      features_dim: 160
+      aux_obs_dim: 10
+    n_quantiles: 25
+    n_critics: 2
+    net_arch: [512, 512]
+    separate_networks_for_stacks: True
+    share_features_extractor: True
+  env_wrapper:
+    - drl_grasping.envs.randomizers.ManipulationGazeboEnvRandomizer:
+        robot_random_joint_positions: True
+        robot_random_joint_positions_std: 0.1
+        camera_pose_rollouts_num: 0
+        camera_noise_mean: 0
+        camera_noise_stddev: 0.001
+        ground_model_rollouts_num: 1
+        object_random_pose: True
+        object_random_use_mesh_models: True
+        object_models_rollouts_num: 1
+        object_random_model_count: 1
+  n_timesteps: 500000
+  buffer_size: 40000
+  learning_starts: 0
+  batch_size: 32
+  learning_rate: lin_0.00015
+  gamma: 0.999
+  tau: 0.00005
+  ent_coef: "auto_0.1_0.05"
+  target_entropy: "auto"
+  top_quantiles_to_drop_per_net: 3
+  train_freq: [1, "episode"]
+  gradient_steps: 100
+  noise_type: "normal"
+  noise_std: 0.025
+  use_sde: False
+  optimize_memory_usage: True
