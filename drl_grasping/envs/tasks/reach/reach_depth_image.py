@@ -32,7 +32,8 @@ class ReachDepthImage(Reach, abc.ABC):
                  sparse_reward: bool,
                  act_quick_reward: float,
                  required_accuracy: float,
-                 verbose: bool,
+                 use_sim_time: bool = True,
+                 verbose: bool = False,
                  **kwargs):
 
         # Initialize the Task base class
@@ -43,12 +44,14 @@ class ReachDepthImage(Reach, abc.ABC):
                        sparse_reward=sparse_reward,
                        act_quick_reward=act_quick_reward,
                        required_accuracy=required_accuracy,
+                       use_sim_time=use_sim_time,
                        verbose=verbose,
                        **kwargs)
 
         # Perception (RGB camera)
         self.camera_sub = CameraSubscriber(topic=f'/{self._camera_type}',
                                            is_point_cloud=False,
+                                           use_sim_time=use_sim_time,
                                            node_name=f'drl_grasping_depth_camera_sub_{self.id}')
 
     def create_observation_space(self) -> ObservationSpace:

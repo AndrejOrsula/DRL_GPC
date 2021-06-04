@@ -39,7 +39,8 @@ class Reach(Manipulation, abc.ABC):
                  sparse_reward: bool,
                  act_quick_reward: float,
                  required_accuracy: float,
-                 verbose: bool,
+                 use_sim_time: float = True,
+                 verbose: bool = False,
                  **kwargs):
 
         # Initialize the Task base class
@@ -94,8 +95,8 @@ class Reach(Manipulation, abc.ABC):
         self.set_orientation_goal(absolute=absolute_quat_xyzw)
 
         # Plan and execute motion to target pose
-        self.moveit2.plan_kinematic_path(allowed_planning_time=0.1)
-        self.moveit2.execute()
+        self.robot_controller.plan_path(allowed_planning_time=0.1)
+        self.robot_controller.execute()
 
     def get_observation(self) -> Observation:
 

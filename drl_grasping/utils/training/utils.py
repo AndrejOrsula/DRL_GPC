@@ -218,7 +218,10 @@ def create_test_env(
     # Note: custom to support Gazebo Runtime wrapping
     def make_env():
         def _init():
-            env = env_wrapper(env=env_id, **env_kwargs)
+            if env_wrapper is not None:
+                env = env_wrapper(env=env_id, **env_kwargs)
+            else:
+                env = gym.make(env_id, **env_kwargs)
             env.seed(seed)
             env.action_space.seed(seed)
 

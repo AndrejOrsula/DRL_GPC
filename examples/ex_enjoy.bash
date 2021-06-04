@@ -29,7 +29,7 @@ CHECKPOINT=0
 ## Path the parent training directory
 TRAINING_DIR="training"
 ## Path to logs
-LOG_DIR=""${TRAINING_DIR}"/"${ENV_ID}"/logs"
+LOG_DIR=""${TRAINING_DIR}"/"${ENV_ID}"_real_eval/logs"
 ## Path to tensorboard logs
 TENSORBOARD_LOG_DIR=""${TRAINING_DIR}"/"${ENV_ID}"/tensorboard_logs"
 ## Path to reward logs (enjoy)
@@ -41,22 +41,19 @@ EXTRA_ARGS=""
 ########################################################################################################################
 ########################################################################################################################
 
-## Spawn ign_moveit2 subprocess in background, while making sure to forward termination signals
-IGN_MOVEIT2_CMD="ros2 launch drl_grasping ign_moveit2_headless.launch.py"
-if [ "$ROBOT_MODEL" = "ur5_rg2" ]; then
-    IGN_MOVEIT2_CMD="ros2 launch drl_grasping ign_moveit2_headless_ur5_rg2.launch.py"
-fi
-echo "Launching ign_moveit2 in background:"
-echo "${IGN_MOVEIT2_CMD}"
-echo ""
-${IGN_MOVEIT2_CMD} &
-## Kill all subprocesses when SIGINT SIGTERM EXIT are received
-subprocess_pid_ign_moveit2="${!}"
-terminate_subprocesses() {
-    echo "INFO: Caught signal, killing all subprocesses..."
-    pkill -P "${subprocess_pid_ign_moveit2}"
-}
-trap 'terminate_subprocesses' SIGINT SIGTERM EXIT ERR
+# ## Spawn ign_moveit2 subprocess in background, while making sure to forward termination signals
+# REAL_CMD="ros2 launch drl_grasping real.launch.py"
+# echo "Launching real runtime (camera and stuff) in background:"
+# echo "${REAL_CMD}"
+# echo ""
+# ${REAL_CMD} &
+# ## Kill all subprocesses when SIGINT SIGTERM EXIT are received
+# subprocess_pid_ign_moveit2="${!}"
+# terminate_subprocesses() {
+#     echo "INFO: Caught signal, killing all subprocesses..."
+#     pkill -P "${subprocess_pid_ign_moveit2}"
+# }
+# trap 'terminate_subprocesses' SIGINT SIGTERM EXIT ERR
 
 ## Arguments
 ENJOY_ARGS="--env "${ENV_ID}" --algo "${ALGO}" --seed "${SEED}" --folder "${LOG_DIR}" --reward-log "${REWARD_LOG_DIR}""

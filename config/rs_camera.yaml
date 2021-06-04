@@ -1,0 +1,59 @@
+/rs_camera:
+  camera:
+    ros__parameters:
+      serial_no: "827112072702"
+      base_frame_id: rs_camera
+
+      enable_depth: true
+      depth_fps: 30.0
+      depth_width: 1280
+      depth_height: 720
+      depth_qos: "SENSOR_DATA"
+
+      enable_color: true
+      color_fps: 30.0
+      color_width: 1920
+      color_height: 1080
+      color_qos: "SENSOR_DATA"
+
+      enable_accel: false
+      enable_gyro: false
+      enable_infra1: false
+      enable_infra2: false
+
+      enable_pointcloud: true
+
+      stereo_module:
+        emitter_enabled: 1
+        auto_exposure_limit: 5000
+        auto_gain_limit: 16
+        laser_power: 360.0
+        auto_exposure_roi:
+          left: 500
+          top: 300
+          right: 700
+          bottom: 500
+
+      rgb_camera:
+        power_line_frequency: 0
+        auto_exposure_roi:
+          left: 700
+          top: 450
+          right: 1200
+          bottom: 800
+
+      filters: "disparity,spatial,temporal,decimation"
+
+      spatial:
+        filter_magnitude: 1
+        filter_smooth_alpha: 0.85
+        filter_smooth_delta: 50
+        holes_fill: 0
+
+      temporal:
+        filter_smooth_alpha: 0.01
+        filter_smooth_delta: 20
+        holes_fill: 0
+
+      decimation:
+        filter_magnitude: 4

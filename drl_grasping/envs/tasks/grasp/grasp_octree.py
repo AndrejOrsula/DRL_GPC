@@ -8,6 +8,8 @@ from typing import Tuple
 import abc
 import gym
 import numpy as np
+from tf2_ros import TransformBroadcaster
+from geometry_msgs.msg import TransformStamped
 
 
 class GraspOctree(Grasp, abc.ABC):
@@ -32,7 +34,7 @@ class GraspOctree(Grasp, abc.ABC):
     # Size of octree (boundary size)
     _octree_size: float = 0.24
     # A small offset to include ground in the observations
-    _octree_ground_offset: float = 0.01
+    _octree_ground_offset: float = 0.015
     _octree_min_bound: Tuple[float, float, float] = (_workspace_centre[0]-_octree_size/2,
                                                      _workspace_centre[1] -
                                                      _octree_size/2,
@@ -88,8 +90,10 @@ class GraspOctree(Grasp, abc.ABC):
                  octree_n_stacked: int,
                  octree_max_size: int,
                  proprieceptive_observations: bool,
-                 verbose: bool,
                  preload_replay_buffer: bool = False,
+                 robot_controller_backend: str = "moveit2",
+                 use_sim_time: bool = True,
+                 verbose: bool = False,
                  **kwargs):
 
         # Initialize the Task base class
@@ -123,8 +127,10 @@ class GraspOctree(Grasp, abc.ABC):
                        curriculum_skip_grasp_stage=curriculum_skip_grasp_stage,
                        curriculum_restart_exploration_at_start=curriculum_restart_exploration_at_start,
                        max_episode_length=max_episode_length,
-                       verbose=verbose,
                        preload_replay_buffer=preload_replay_buffer,
+                       robot_controller_backend=robot_controller_backend,
+                       use_sim_time=use_sim_time,
+                       verbose=verbose,
                        **kwargs)
 
         if octree_include_color:
@@ -135,6 +141,7 @@ class GraspOctree(Grasp, abc.ABC):
         # Perception (RGB-D camera - point cloud)
         self.camera_sub = CameraSubscriber(topic=f'/{self._camera_type}/points',
                                            is_point_cloud=True,
+                                           use_sim_time=use_sim_time,
                                            node_name=f'drl_grasping_point_cloud_sub_{self.id}')
 
         self.octree_creator = OctreeCreator(min_bound=self._octree_min_bound,
@@ -142,10 +149,10 @@ class GraspOctree(Grasp, abc.ABC):
                                             depth=octree_depth,
                                             full_depth=octree_full_depth,
                                             include_color=octree_include_color,
-                                            use_sim_time=True,
+                                            use_sim_time=use_sim_time,
                                             debug_draw=False,
-                                            debug_write_octree=False,
-                                            robot_frame_id='panda_link0' if 'panda' == robot_model else 'base_link',
+                                            debug_write_octree=True,
+                                            robot_frame_id='world',
                                             node_name=f'drl_grasping_octree_creator_{self.id}')
 
         # Additional parameters
@@ -155,6 +162,8 @@ class GraspOctree(Grasp, abc.ABC):
 
         # List of all octrees
         self.__stacked_octrees = deque([], maxlen=self._octree_n_stacked)
+
+        self.tf_broadcaster = TransformBroadcaster(self.octree_creator)
 
     def create_observation_space(self) -> ObservationSpace:
 
@@ -224,9 +233,10 @@ class GraspOctree(Grasp, abc.ABC):
                                        dtype='uint8')
 
             # Gather proprioceptive observations
+            ee_quat = self.get_ee_orientation()
             ee_position = self.get_ee_position()
             ee_orientation = orientation_quat_to_6d(
-                quat_xyzw=self.get_ee_orientation())
+                quat_xyzw=ee_quat)
             aux_obs = (self._gripper_state,) + ee_position + \
                 ee_orientation[0] + ee_orientation[1]
 
@@ -234,6 +244,18 @@ class GraspOctree(Grasp, abc.ABC):
             octree[-48:-8] = np.ndarray(buffer=np.array(aux_obs, dtype='float32').tobytes(),
                                         shape=(40,),
                                         dtype='uint8')
+
+            tf = TransformStamped()
+            tf.header.frame_id = 'world'
+            tf.child_frame_id = 'robot_ee'
+            tf.transform.translation.x = ee_position[0]
+            tf.transform.translation.y = ee_position[1]
+            tf.transform.translation.z = ee_position[2]
+            tf.transform.rotation.x = ee_quat[0]
+            tf.transform.rotation.y = ee_quat[1]
+            tf.transform.rotation.z = ee_quat[2]
+            tf.transform.rotation.w = ee_quat[3]
+            self.tf_broadcaster.sendTransform(tf)
 
         self.__stacked_octrees.append(octree)
         # For the first buffer after reset, fill with identical observations until deque is full

@@ -144,7 +144,8 @@ register(
             'verbose': False})
 register(
     id='Grasp-OctreeWithColor-Gazebo-v0',
-    entry_point='gym_ignition.runtimes.gazebo_runtime:GazeboRuntime',
+    # entry_point='gym_ignition.runtimes.gazebo_runtime:GazeboRuntime',
+    entry_point='drl_grasping.envs.runtimes:RealEvaluationRuntimeManual',
     max_episode_steps=GRASP_MAX_EPISODE_STEPS,
     kwargs={'task_cls': GraspOctree,
             'agent_rate': GRASP_AGENT_RATE,

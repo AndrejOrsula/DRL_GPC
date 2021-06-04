@@ -533,7 +533,11 @@ class ExperimentManager(object):
         # Note: made custom to support Gazebo Runtime wrapping
         def make_env():
             def _init():
-                env = self.env_wrapper(env=self.env_id, **self.env_kwargs)
+                if self.env_wrapper is not None:
+                    env = self.env_wrapper(env=self.env_id, **self.env_kwargs)
+                else:
+                    env = gym.make(self.env_id, **self.env_kwargs)
+
                 env.seed(self.seed)
                 env.action_space.seed(self.seed)
 

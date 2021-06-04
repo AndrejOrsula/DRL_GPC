@@ -53,7 +53,8 @@ class ReachOctree(Reach, abc.ABC):
                  octree_include_color: bool,
                  octree_n_stacked: int,
                  octree_max_size: int,
-                 verbose: bool,
+                 use_sim_time: bool = True,
+                 verbose: bool = False,
                  **kwargs):
 
         # Initialize the Task base class
@@ -64,6 +65,7 @@ class ReachOctree(Reach, abc.ABC):
                        sparse_reward=sparse_reward,
                        act_quick_reward=act_quick_reward,
                        required_accuracy=required_accuracy,
+                       use_sim_time=use_sim_time,
                        verbose=verbose,
                        **kwargs)
 
@@ -75,6 +77,7 @@ class ReachOctree(Reach, abc.ABC):
         # Perception (RGB-D camera - point cloud)
         self.camera_sub = CameraSubscriber(topic=f'/{self._camera_type}/points',
                                            is_point_cloud=True,
+                                           use_sim_time=use_sim_time,
                                            node_name=f'drl_grasping_point_cloud_sub_{self.id}')
 
         self.octree_creator = OctreeCreator(min_bound=self._octree_min_bound,
@@ -82,7 +85,7 @@ class ReachOctree(Reach, abc.ABC):
                                             depth=octree_depth,
                                             full_depth=octree_full_depth,
                                             include_color=octree_include_color,
-                                            use_sim_time=True,
+                                            use_sim_time=use_sim_time,
                                             debug_draw=False,
                                             debug_write_octree=False,
                                             robot_frame_id='panda_link0' if 'panda' == robot_model else 'base_link',

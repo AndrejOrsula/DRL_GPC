@@ -23,3 +23,7 @@ class MoveIt2(MoveIt2Interface):
         thread = Thread(target=self._moveit2_executor.spin, args=())
         thread.daemon = True
         thread.start()
+
+    def plan_path(self, **kwargs):
+        # Select the default planner
+        self.plan_kinematic_path(**kwargs)

@@ -119,6 +119,7 @@ class ManipulationGazeboEnvRandomizer(gazebo_env_randomizer.GazeboEnvRandomizer,
             # TODO (low priority): TF2 - Move this to task
             # Broadcaster of tf (world -> robot, world -> camera)
             self._tf2_broadcaster = Tf2Broadcaster(
+                use_sim_time=True,
                 node_name=f'drl_grasping_camera_tf_broadcaster_{task.id}')
 
             # Initialise all models and world plugins
@@ -432,10 +433,10 @@ class ManipulationGazeboEnvRandomizer(gazebo_env_randomizer.GazeboEnvRandomizer,
             raise RuntimeError("Failed to reset robot joint velocities")
 
         # Send new positions also to the controller
-        # task.moveit2.move_to_joint_positions(joint_positions[:-finger_count])
+        # task.robot_controller.move_to_joint_positions(joint_positions[:-finger_count])
         # Note: 'move_to_joint_positions' requires that joints need to be sorted
         arm_joint_names = self._robot.get_joint_names()[:-finger_count]
-        task.moveit2.move_to_joint_positions(list(operator.itemgetter(*sorted(range(len(arm_joint_names)),
+        task.robot_controller.move_to_joint_positions(list(operator.itemgetter(*sorted(range(len(arm_joint_names)),
                                                                               key=arm_joint_names.__getitem__))(joint_positions)))
 
     def reset_robot_joint_positions(self,
@@ -448,11 +449,11 @@ class ManipulationGazeboEnvRandomizer(gazebo_env_randomizer.GazeboEnvRandomizer,
             raise RuntimeError("Failed to reset robot joint velocities")
 
         # Send new positions also to the controller
-        # task.moveit2.move_to_joint_positions(task._robot_initial_joint_positions[:-finger_count])
+        # task.robot_controller.move_to_joint_positions(task._robot_initial_joint_positions[:-finger_count])
         # Note: 'move_to_joint_positions' requires that joints need to be sorted
         arm_joint_names = self._robot.get_joint_names(
         )[:-self._robot.get_finger_count()]
-        task.moveit2.move_to_joint_positions(list(operator.itemgetter(*sorted(range(len(arm_joint_names)),
+        task.robot_controller.move_to_joint_positions(list(operator.itemgetter(*sorted(range(len(arm_joint_names)),
                                                                               key=arm_joint_names.__getitem__))(task._robot_initial_joint_positions)))
 
     def randomize_camera_pose(self,

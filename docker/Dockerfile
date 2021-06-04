@@ -180,7 +180,7 @@ RUN pip3 install \
 RUN pip3 install \
         sb3-contrib
 
-ARG DRL_GRASPING_GIT_BRANCH=master
+ARG DRL_GRASPING_GIT_BRANCH=sim2real
 ARG DRL_GRASPING_DOCKER_VERSION=0.12.0
 RUN apt-get update && mkdir -p ${DRL_GRASPING_REPOS_DIR}/drl_grasping/src && \
     cd ${DRL_GRASPING_REPOS_DIR}/drl_grasping/src && \

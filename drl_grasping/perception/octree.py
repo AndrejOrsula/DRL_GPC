@@ -15,7 +15,7 @@ import torch
 
 class OctreeCreator(Node):
     def __init__(self,
-                 robot_frame_id: str = "panda_link0",
+                 robot_frame_id: str = "world",
                  min_bound: Tuple[float, float, float] = (-1.0, -1.0, -1.0),
                  max_bound: Tuple[float, float, float] = (1.0, 1.0, 1.0),
                  normals_radius: float = 0.05,
